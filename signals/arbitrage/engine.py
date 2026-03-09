@@ -131,10 +131,16 @@ class ArbitrageEngine:
 
         # Fee models per exchange
         exchanges_cfg = get_exchanges()
+        # Use maker fees for fee model — taker fees are too conservative
+        # for spread scanning. Real execution uses maker orders where possible.
+        # Override via ARBITRAGE_FEE_BPS env var for testing (e.g. "5" = 5bps flat)
+        flat_fee_override = os.getenv("ARBITRAGE_FEE_BPS")
         self._fee_models: Dict[str, ExchangeFeeModel] = {
             name: ExchangeFeeModel(
                 exchange=name,
-                taker_fee_bps=cfg.fee_taker * 10_000,
+                taker_fee_bps=float(flat_fee_override) if flat_fee_override
+                              else cfg.fee_maker * 10_000,
+                base_slippage_bps=0.5,  # reduced slippage assumption for scanning
             )
             for name, cfg in exchanges_cfg.items()
         }
@@ -249,6 +255,16 @@ class ArbitrageEngine:
         net_profit_bps = gross_spread_bps - total_cost_bps
 
         if net_profit_bps < self.config.min_profit_bps:
+            # Log near-miss spreads so we can tune thresholds
+            if gross_spread_bps > total_cost_bps * 0.5:
+                log.debug(
+                    "Near-miss spread",
+                    symbol=symbol if "symbol" in dir() else "?",
+                    gross_bps=round(gross_spread_bps, 2),
+                    cost_bps=round(total_cost_bps, 2),
+                    net_bps=round(net_profit_bps, 2),
+                    threshold=self.config.min_profit_bps,
+                )
             return None
 
         # Track spread history for this pair
