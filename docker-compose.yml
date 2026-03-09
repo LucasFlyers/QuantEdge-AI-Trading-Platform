@@ -1,0 +1,131 @@
+version: "3.9"
+
+# ─── QuantEdge — Local Development Compose ────────────────────────────────────
+# Database (Neon) is cloud-hosted — no local Postgres container needed.
+# This compose file provides: Redis, Kafka (optional), monitoring for local dev.
+#
+# For Railway production: use Railway's Redis plugin + Neon for database.
+# Run basic services:    docker-compose up
+# Include streaming:     docker-compose --profile streaming up
+# Include monitoring:    docker-compose --profile monitoring up
+
+networks:
+  trading-net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  kafka_data:
+
+services:
+
+  # ── Redis ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: trading-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks: [trading-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Kafka (Phase 2+ streaming — optional) ────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: trading-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks: [trading-net]
+    profiles: ["streaming"]
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: trading-kafka
+    restart: unless-stopped
+    depends_on: [zookeeper]
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks: [trading-net]
+    profiles: ["streaming"]
+
+  # ── Platform Services ─────────────────────────────────────────────────────
+  arbitrage-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading-arbitrage
+    restart: unless-stopped
+    depends_on:
+      redis: { condition: service_healthy }
+    command: python signals/arbitrage/pipeline.py
+    env_file: .env
+    environment:
+      PLATFORM_ENV: development
+      REDIS_HOST: redis
+    networks: [trading-net]
+
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading-api
+    restart: unless-stopped
+    depends_on:
+      redis: { condition: service_healthy }
+    command: uvicorn api.routes:app --host 0.0.0.0 --port 8000 --workers 2
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      PLATFORM_ENV: development
+      REDIS_HOST: redis
+    networks: [trading-net]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ── Monitoring (local only) ───────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: trading-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    networks: [trading-net]
+    profiles: ["monitoring"]
+
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: trading-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    networks: [trading-net]
+    profiles: ["monitoring"]
