@@ -114,27 +114,6 @@ class HealthResponse(BaseModel):
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
-@app.get("/health", response_model=HealthResponse, tags=["System"])
-async def health_check():
-    """Platform health check endpoint."""
-    components = {}
-
-    if _arbitrage_pipeline:
-        stats = _arbitrage_pipeline.get_engine_stats()
-        components["arbitrage_engine"] = {
-            "status": "running",
-            "ticks_processed": stats.get("ticks_processed", 0),
-            "price_coverage": stats.get("price_coverage", {}),
-        }
-    else:
-        components["arbitrage_engine"] = {"status": "not_initialized"}
-
-    return HealthResponse(
-        status="healthy",
-        timestamp=datetime.utcnow().isoformat() + "Z",
-        components=components,
-    )
-
 
 @app.get("/signals/arbitrage", tags=["Signals"])
 async def get_arbitrage_signals(
