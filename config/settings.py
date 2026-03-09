@@ -98,8 +98,8 @@ class TelegramConfig:
 
 @dataclass
 class ArbitrageConfig:
-    min_profit_bps: float = 20.0          # Minimum profit in basis points
-    min_confidence: float = 0.65          # Confidence threshold 0-1
+    min_profit_bps: float = float(os.getenv("ARBITRAGE_MIN_PROFIT_BPS", "20.0"))
+    min_confidence: float = float(os.getenv("ARBITRAGE_MIN_CONFIDENCE", "0.65"))
     max_execution_time_ms: int = 500      # Max window before spread closes
     slippage_buffer_bps: float = 5.0      # Extra slippage buffer
     scan_interval_ms: int = 100           # Scan frequency
