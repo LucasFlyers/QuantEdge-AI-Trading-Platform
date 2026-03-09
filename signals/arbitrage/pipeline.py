@@ -192,6 +192,30 @@ class ArbitragePipeline:
 
 # ─── Standalone Entry Point ───────────────────────────────────────────────────
 
+async def health_server(pipeline) -> None:
+    """Tiny HTTP server so Railway healthcheck passes. Does not affect pipeline."""
+    from aiohttp import web
+
+    async def handle(request):
+        stats = pipeline.get_engine_stats()
+        return web.json_response({
+            "status": "ok",
+            "pipeline_active": pipeline._running,
+            "ticks_processed": stats.get("ticks_processed", 0),
+            "signals_generated": pipeline._signals_generated,
+        })
+
+    port = int(os.getenv("PORT", "8000"))
+    app = web.Application()
+    app.router.add_get("/health", handle)
+    app.router.add_get("/", handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    log.info("Pipeline health server running", port=port)
+
+
 async def main():
     """Run the arbitrage pipeline as a standalone process."""
     configure_logging(level="INFO", fmt="json")
@@ -221,6 +245,7 @@ async def main():
     try:
         await pipeline.initialize()
         await pipeline.start()
+        asyncio.create_task(health_server(pipeline))
         log.info("Pipeline active. Press Ctrl+C to stop.")
         await shutdown_event.wait()
     finally:
