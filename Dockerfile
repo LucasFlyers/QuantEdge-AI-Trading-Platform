@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# System dependencies for asyncpg (C extension) and curl (healthcheck)
+# System deps for asyncpg (C extension) and curl (health check)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install Python dependencies first (cached layer)
+# Install dependencies — slim requirements only (no torch/ML)
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application code
 COPY . .
 
-# Non-root user for security
+# Non-root user
 RUN addgroup --system quant \
     && adduser --system --ingroup quant quant \
     && chown -R quant:quant /app
@@ -25,9 +25,13 @@ USER quant
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+# PORT is injected by Railway — default for local dev only
 ENV PORT=8000
 
 EXPOSE $PORT
 
-# Railway overrides CMD via railway.toml startCommand
-CMD ["uvicorn", "api.routes:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--loop", "asyncio"]
+# Health check — Railway also does this via railway.toml healthcheckPath
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
+    CMD curl -f http://localhost:${PORT}/health || exit 1
+
+CMD ["sh", "-c", "uvicorn api.routes:app --host 0.0.0.0 --port ${PORT} --workers 1 --loop asyncio"]

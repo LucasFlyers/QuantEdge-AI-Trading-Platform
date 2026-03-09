@@ -1,0 +1,22 @@
+# ─── QuantEdge Pipeline Service — Full Requirements ───────────────────────────
+# Used by: Pipeline worker when ML sentiment engine is active (Phase 3+)
+# Includes torch — only install this for the pipeline service if you need it
+# Install: pip install -r requirements.txt -r requirements-pipeline.txt
+
+# ─── Streaming ────────────────────────────────────────────────────────────────
+aiokafka==0.10.0
+
+# ─── AI/ML sentiment engine (Phase 3) ─────────────────────────────────────────
+torch==2.2.1
+transformers==4.38.2
+sentencepiece==0.2.0
+tokenizers==0.15.2
+
+# ─── Blockchain / Whale tracking (Phase 5) ────────────────────────────────────
+web3==6.15.1
+aiohttp-socks==0.8.4
+
+# ─── Monitoring ───────────────────────────────────────────────────────────────
+prometheus-client==0.20.0
+opentelemetry-api==1.23.0
+opentelemetry-sdk==1.23.0

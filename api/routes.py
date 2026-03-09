@@ -284,3 +284,31 @@ async def root():
             "/health",
         ]
     }
+
+
+@app.get("/health", tags=["System"])
+async def health():
+    """
+    Health check endpoint — used by Railway to verify the service is running.
+    Always returns 200 so long as the process is alive.
+    Database connectivity is checked separately and reported but does not
+    cause a health failure (avoids restart loops on DB issues).
+    """
+    db_status = "unconfigured"
+    if get_neon().is_configured:
+        try:
+            from data.storage.neon import get_pool
+            pool = get_pool()
+            async with pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+            db_status = "connected"
+        except Exception:
+            db_status = "error"
+
+    return {
+        "status": "ok",
+        "database": db_status,
+        "signals_buffered": len(_signal_history),
+        "pipeline_active": _arbitrage_pipeline is not None,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
