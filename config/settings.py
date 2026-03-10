@@ -113,16 +113,16 @@ class ArbitrageConfig:
 class SentimentConfig:
     model_name: str = "cardiffnlp/twitter-roberta-base-sentiment-latest"
     batch_size: int = 64
-    min_mentions_threshold: int = 10
-    surge_multiplier: float = 2.0         # Mention surge trigger
+    min_mentions_threshold: int = 3
+    surge_multiplier: float = 1.25        # Mention surge trigger (25% above baseline)
     lookback_window_minutes: int = 120
-    confidence_threshold: float = 0.70
+    confidence_threshold: float = 0.40
 
 
 @dataclass
 class LiquidityConfig:
-    wall_size_multiplier: float = 10.0    # Wall = 10x average order size
-    imbalance_threshold: float = 0.70     # 70% bid/ask imbalance triggers signal
+    wall_size_multiplier: float = 4.0     # Wall = 4x average order size
+    imbalance_threshold: float = 0.62     # 62% bid/ask imbalance triggers signal
     depth_levels: int = 20               # Order book depth to analyze
     refresh_interval_ms: int = 250
 

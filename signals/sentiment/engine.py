@@ -274,14 +274,18 @@ class SentimentEngine:
         # Get baseline for comparison
         baseline = self._baseline_mention_rates.get(token)
         if baseline is None or baseline == 0:
+            # No baseline yet — seed it and allow signal if sentiment is clear
             self._baseline_mention_rates[token] = window.count
-            return
-
-        # Check for mention surge
-        mention_change_pct = ((window.count - baseline) / baseline) * 100
-
-        if abs(mention_change_pct) < (self.config.surge_multiplier - 1) * 100:
-            return  # Not enough surge
+            mention_change_pct = 0.0
+            # Only emit cold-start signal if sentiment is strong enough
+            sentiment_score = window.weighted_sentiment
+            if abs(sentiment_score) < 0.15:
+                return
+        else:
+            # Check for mention surge
+            mention_change_pct = ((window.count - baseline) / baseline) * 100
+            if abs(mention_change_pct) < (self.config.surge_multiplier - 1) * 100:
+                return  # Not enough surge
 
         # Determine direction
         sentiment_score = window.weighted_sentiment
