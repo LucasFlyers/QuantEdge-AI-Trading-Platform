@@ -7,6 +7,7 @@ Designed for dashboard consumption and external integrations.
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -37,15 +38,18 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-from fastapi.staticfiles import StaticFiles
-app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+import os as _os
+_dashboard_dir = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), "dashboard")
+if _os.path.isdir(_dashboard_dir):
+    app.mount("/dashboard", StaticFiles(directory=_dashboard_dir, html=True), name="dashboard")
+
 
 
 # ─── Startup / Shutdown ───────────────────────────────────────────────────────
