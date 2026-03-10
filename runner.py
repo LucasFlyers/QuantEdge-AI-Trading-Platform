@@ -2,10 +2,12 @@
 QuantEdge — Combined Pipeline Runner (Service 2)
 
 Runs all active signal pipelines concurrently in a single process:
-  - Phase 1: Arbitrage Pipeline (Binance, Coinbase, Kraken WebSockets)
-  - Phase 2: Sentiment Pipeline (Reddit, CryptoPanic, Fear & Greed)
+  - Phase 1: Arbitrage  (Binance, Coinbase, Kraken WebSockets)
+  - Phase 2: Sentiment  (Reddit, CryptoPanic, Fear & Greed)
+  - Phase 3: Whale      (Etherscan ETH/ERC-20, Bitcoin blockchain.info)
+  - Phase 4: Liquidity  (Binance order book depth streams)
 
-A single /health endpoint reports status of both pipelines.
+A single /health endpoint reports status of all pipelines.
 """
 import asyncio
 import os
@@ -17,33 +19,42 @@ from aiohttp import web
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from signals.arbitrage.pipeline import ArbitragePipeline
+from signals.liquidity.pipeline import LiquidityPipeline
 from signals.sentiment.pipeline import SentimentPipeline
+from signals.whale.pipeline import WhalePipeline
 from utils.logging import configure_logging, get_logger
 
 log = get_logger("platform.runner")
 
 
-async def health_server(arb_pipeline: ArbitragePipeline, sent_pipeline: SentimentPipeline) -> None:
-    """Combined health endpoint for both pipelines."""
-
+async def health_server(arb, sent, whale, liq) -> None:
     async def handle(request):
-        arb_stats = arb_pipeline.get_engine_stats()
-        fgi = sent_pipeline._fear_greed.latest
+        fgi = sent._fear_greed.latest
         return web.json_response({
             "status": "ok",
             "pipelines": {
                 "arbitrage": {
-                    "active": arb_pipeline._running,
-                    "ticks_processed": arb_stats.get("ticks_processed", 0),
-                    "signals_generated": arb_pipeline._signals_generated,
+                    "active": arb._running,
+                    "signals_generated": arb._signals_generated,
                 },
                 "sentiment": {
-                    "active": sent_pipeline._running,
-                    "posts_processed": sent_pipeline._engine._posts_processed,
-                    "signals_generated": sent_pipeline._signals_generated,
-                    "tokens_tracked": len(sent_pipeline._engine._mention_windows),
+                    "active": sent._running,
+                    "posts_processed": sent._engine._posts_processed,
+                    "signals_generated": sent._signals_generated,
+                    "tokens_tracked": len(sent._engine._mention_windows),
                     "fear_greed": fgi.value if fgi else None,
                     "fear_greed_label": fgi.classification if fgi else "unknown",
+                },
+                "whale": {
+                    "active": whale._running,
+                    "tx_processed": whale._tx_processed,
+                    "signals_generated": whale._signals_generated,
+                },
+                "liquidity": {
+                    "active": liq._running,
+                    "snapshots_processed": liq._snapshots_processed,
+                    "signals_generated": liq._signals_generated,
+                    "symbols_tracked": len(liq._engine._ob_stats),
                 },
             },
         })
@@ -55,7 +66,7 @@ async def health_server(arb_pipeline: ArbitragePipeline, sent_pipeline: Sentimen
     runner = web.AppRunner(app)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", port).start()
-    log.info("Combined health server running", port=port)
+    log.info("Health server running", port=port)
 
 
 async def main():
@@ -63,11 +74,14 @@ async def main():
 
     log.info("=" * 60)
     log.info("QuantEdge AI Trading Intelligence Platform")
-    log.info("Phase 1: Arbitrage  |  Phase 2: Sentiment")
+    log.info("Phase 1: Arbitrage | Phase 2: Sentiment")
+    log.info("Phase 3: Whale     | Phase 4: Liquidity")
     log.info("=" * 60)
 
-    arb_pipeline = ArbitragePipeline(exchanges=["binance", "coinbase", "kraken"])
-    sent_pipeline = SentimentPipeline()
+    arb   = ArbitragePipeline(exchanges=["binance", "coinbase", "kraken"])
+    sent  = SentimentPipeline()
+    whale = WhalePipeline()
+    liq   = LiquidityPipeline()
 
     loop = asyncio.get_event_loop()
     shutdown_event = asyncio.Event()
@@ -83,24 +97,24 @@ async def main():
             pass
 
     try:
-        # Initialize both pipelines
-        await arb_pipeline.initialize()
-        await sent_pipeline.initialize()
+        await arb.initialize()
+        await sent.initialize()
+        await whale.initialize()
+        await liq.initialize()
 
-        # Start both pipelines
-        await arb_pipeline.start()
-        await sent_pipeline.start()
+        await arb.start()
+        await sent.start()
+        await whale.start()
+        await liq.start()
 
-        # Start combined health server
-        asyncio.create_task(health_server(arb_pipeline, sent_pipeline))
+        asyncio.create_task(health_server(arb, sent, whale, liq))
 
         log.info("All pipelines active.")
         await shutdown_event.wait()
 
     finally:
         await asyncio.gather(
-            arb_pipeline.stop(),
-            sent_pipeline.stop(),
+            arb.stop(), sent.stop(), whale.stop(), liq.stop(),
             return_exceptions=True,
         )
         log.info("Shutdown complete.")
