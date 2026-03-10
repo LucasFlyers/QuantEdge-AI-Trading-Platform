@@ -88,6 +88,13 @@ def record_signal(signal_dict: Dict):
         _signal_history.pop(0)
 
 
+@app.post("/internal/push", include_in_schema=False)
+async def internal_push(payload: Dict[str, Any]):
+    """Internal endpoint: Service 2 (pipeline) pushes signals here so Service 1 can serve them."""
+    record_signal(payload)
+    return {"ok": True, "buffered": len(_signal_history)}
+
+
 # ─── Response Schemas ─────────────────────────────────────────────────────────
 
 class SpreadResponse(BaseModel):

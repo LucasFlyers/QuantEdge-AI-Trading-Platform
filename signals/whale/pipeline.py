@@ -147,6 +147,10 @@ class WhalePipeline:
             except Exception as e:
                 log.error("Failed to persist whale signal", error=str(e))
 
+        # Push to API (Service 1)
+        from utils.api_push import push_signal
+        await push_signal(signal)
+
         await self._dispatcher.dispatch_signal(signal)
 
     async def _status_reporter(self) -> None:

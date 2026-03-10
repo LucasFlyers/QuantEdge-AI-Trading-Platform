@@ -90,6 +90,8 @@ class SentimentPipeline:
             asyncio.create_task(self._status_reporter(), name="status-reporter"),
         ]
 
+        # Trigger model load in background after 30s delay (container healthy first)
+        tasks.append(asyncio.create_task(self._delayed_model_load(), name="model-loader"))
         self._tasks = tasks
         log.info("Sentiment pipeline running", task_count=len(tasks))
 
@@ -106,6 +108,14 @@ class SentimentPipeline:
 
         await self._dispatcher.stop()
         log.info("Sentiment pipeline stopped", signals_generated=self._signals_generated)
+
+    async def _delayed_model_load(self) -> None:
+        """Wait for container to be healthy, then trigger FinBERT load."""
+        await asyncio.sleep(30)
+        classifier = self._engine._classifier
+        if hasattr(classifier, "trigger_background_load"):
+            log.info("Triggering transformer model background load")
+            classifier.trigger_background_load()
 
     async def _on_sentiment_signal(self, signal: SentimentSignal) -> None:
         """Handle a new sentiment signal — persist + dispatch."""
@@ -136,6 +146,10 @@ class SentimentPipeline:
                 await repo.save_sentiment(signal)
             except Exception as e:
                 log.error("Failed to persist sentiment signal", error=str(e))
+
+        # Push to API (Service 1)
+        from utils.api_push import push_signal
+        await push_signal(signal)
 
         # Dispatch alert
         await self._dispatcher.dispatch_signal(signal)

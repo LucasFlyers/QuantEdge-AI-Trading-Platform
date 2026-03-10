@@ -149,6 +149,10 @@ class ArbitragePipeline:
             strength=signal.strength.value,
         )
 
+        # Push to API (Service 1)
+        from utils.api_push import push_signal
+        await push_signal(signal)
+
         # Dispatch alert
         if self._dispatcher:
             await self._dispatcher.dispatch_signal(signal)
