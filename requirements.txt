@@ -1,7 +1,6 @@
-# ─── QuantEdge API Service — Lightweight Requirements ─────────────────────────
-# Used by: API server (Service 1) + Arbitrage Pipeline (Service 2)
-# Does NOT include torch/transformers — those are only needed for Phase 3 ML
-# This keeps the Docker image ~200MB instead of ~3GB
+# ─── QuantEdge Requirements ────────────────────────────────────────────────────
+# Single requirements file for both services.
+# Torch is CPU-only (~700MB) — much smaller than the CUDA build (~2.5GB).
 
 # ─── Core async runtime ───────────────────────────────────────────────────────
 aiohttp==3.9.3
@@ -19,10 +18,15 @@ scipy==1.12.0
 # ─── Database (Neon) ──────────────────────────────────────────────────────────
 asyncpg==0.29.0
 
-# ─── Cache & messaging ────────────────────────────────────────────────────────
-redis==5.0.3
-
 # ─── Utils ────────────────────────────────────────────────────────────────────
 python-dotenv==1.0.1
 orjson==3.9.15
 httpx==0.27.0
+
+# ─── ML Sentiment Engine (Phase 5) ────────────────────────────────────────────
+# CPU-only torch — install from PyTorch CPU index (avoids CUDA bloat)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.1+cpu
+transformers==4.38.2
+sentencepiece==0.2.0
+tokenizers==0.15.2

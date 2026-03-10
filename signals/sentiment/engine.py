@@ -186,7 +186,14 @@ class SentimentEngine:
         self.config = get_sentiment()
         self._on_signal = on_signal
         self._preprocessor = TextPreprocessor()
-        self._classifier = LexiconSentimentClassifier()
+        # Use FinBERT transformer if available, lexicon as fallback
+        use_transformer = os.getenv("USE_TRANSFORMER_SENTIMENT", "true").lower() == "true"
+        if use_transformer:
+            from signals.sentiment.classifier import TransformerSentimentClassifier
+            self._classifier = TransformerSentimentClassifier()
+        else:
+            self._classifier = LexiconSentimentClassifier()
+        log.info("Sentiment classifier initialised", type=type(self._classifier).__name__)
 
         # Per-token mention windows
         self._mention_windows: Dict[str, TokenMentionWindow] = {}
