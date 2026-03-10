@@ -45,10 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-import os as _os
-_dashboard_dir = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))), "dashboard")
-if _os.path.isdir(_dashboard_dir):
-    app.mount("/dashboard", StaticFiles(directory=_dashboard_dir, html=True), name="dashboard")
+app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")
 
 
 
