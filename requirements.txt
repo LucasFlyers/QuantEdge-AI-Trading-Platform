@@ -1,6 +1,4 @@
 # ─── QuantEdge Requirements ────────────────────────────────────────────────────
-# Single requirements file for both services.
-# Torch is CPU-only (~700MB) — much smaller than the CUDA build (~2.5GB).
 
 # ─── Core async runtime ───────────────────────────────────────────────────────
 aiohttp==3.9.3
@@ -22,11 +20,3 @@ asyncpg==0.29.0
 python-dotenv==1.0.1
 orjson==3.9.15
 httpx==0.27.0
-
-# ─── ML Sentiment Engine (Phase 5) ────────────────────────────────────────────
-# CPU-only torch — install from PyTorch CPU index (avoids CUDA bloat)
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.2.1+cpu
-transformers==4.38.2
-sentencepiece==0.2.0
-tokenizers==0.15.2

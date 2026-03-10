@@ -237,8 +237,11 @@ class SentimentEngine:
         if not tokens:
             return
 
-        # Classify sentiment
-        bull_pct, neutral_pct, bear_pct = self._classifier.classify(clean_text)
+        # Classify sentiment — use async version if available (Claude API)
+        if hasattr(self._classifier, "classify_async"):
+            bull_pct, neutral_pct, bear_pct = await self._classifier.classify_async(clean_text)
+        else:
+            bull_pct, neutral_pct, bear_pct = self._classifier.classify(clean_text)
         sentiment_score = bull_pct - bear_pct
 
         # Update each mentioned token's window
