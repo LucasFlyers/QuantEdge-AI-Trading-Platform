@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuantEdge — Trading Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050508;
+    --surface: #0c0c12;
+    --surface2: #13131c;
+    --border: #1e1e2e;
+    --accent: #00ff88;
+    --accent2: #ff3d6b;
+    --accent3: #3d9bff;
+    --accent4: #ffb800;
+    --text: #e8e8f0;
+    --muted: #5a5a72;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(5,5,8,0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-mark {
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 12px var(--accent); opacity: 1; }
+    50% { box-shadow: 0 0 24px var(--accent); opacity: 0.85; }
+  }
+
+  .logo span { color: var(--accent); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: blink 1.4s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  .api-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .api-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    width: 280px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .api-input:focus { border-color: var(--accent); }
+  .api-input::placeholder { color: var(--muted); }
+
+  .btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: opacity 0.15s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+  .btn.secondary {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn.secondary:hover { color: var(--text); border-color: var(--muted); }
+
+  /* ── Layout ── */
+  main {
+    position: relative;
+    z-index: 1;
+    padding: 24px 32px 48px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  /* ── Stats Row ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card.arb::before { background: var(--accent3); }
+  .stat-card.sentiment::before { background: var(--accent4); }
+  .stat-card.whale::before { background: var(--accent2); }
+  .stat-card.liquidity::before { background: var(--accent); }
+  .stat-card.health::before { background: var(--muted); }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-card.arb .stat-value { color: var(--accent3); }
+  .stat-card.sentiment .stat-value { color: var(--accent4); }
+  .stat-card.whale .stat-value { color: var(--accent2); }
+  .stat-card.liquidity .stat-value { color: var(--accent); }
+  .stat-card.health .stat-value { color: var(--accent); font-size: 18px; }
+
+  .stat-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* ── Two-column layout ── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* ── Panel ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .dot-arb { background: var(--accent3); }
+  .dot-sent { background: var(--accent4); }
+  .dot-whale { background: var(--accent2); }
+  .dot-liq { background: var(--accent); }
+
+  .panel-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .panel-body {
+    max-height: 380px;
+    overflow-y: auto;
+  }
+
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Signal rows ── */
+  .signal-row {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    gap: 4px;
+    animation: fadeIn 0.3s ease;
+    cursor: default;
+    transition: background 0.15s;
+  }
+
+  .signal-row:last-child { border-bottom: none; }
+  .signal-row:hover { background: var(--surface2); }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .signal-row.new {
+    animation: flash-in 0.6s ease;
+  }
+
+  @keyframes flash-in {
+    0% { background: rgba(0,255,136,0.08); }
+    100% { background: transparent; }
+  }
+
+  .sig-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sig-pair {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .sig-profit {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .profit-positive { color: var(--accent); }
+  .profit-negative { color: var(--accent2); }
+
+  .sig-mid {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-weight: 700;
+  }
+
+  .tag-bullish { background: rgba(0,255,136,0.12); color: var(--accent); }
+  .tag-bearish { background: rgba(255,61,107,0.12); color: var(--accent2); }
+  .tag-neutral { background: rgba(90,90,114,0.2); color: var(--muted); }
+  .tag-strong { background: rgba(61,155,255,0.12); color: var(--accent3); }
+  .tag-critical { background: rgba(255,61,107,0.2); color: var(--accent2); border: 1px solid rgba(255,61,107,0.3); }
+  .tag-moderate { background: rgba(255,184,0,0.1); color: var(--accent4); }
+  .tag-weak { background: rgba(90,90,114,0.15); color: var(--muted); }
+  .tag-exchange { background: rgba(61,155,255,0.1); color: var(--accent3); }
+
+  .sig-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sig-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  .sig-conf {
+    font-family: var(--mono);
+    font-size: 10px;
+  }
+
+  .conf-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .conf-bar {
+    width: 40px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .conf-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.4s ease;
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+
+  .empty-icon {
+    font-size: 28px;
+    margin-bottom: 12px;
+    opacity: 0.4;
+  }
+
+  /* ── Live spreads table ── */
+  .spread-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .spread-table th {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  .spread-table td {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(30,30,46,0.5);
+    color: var(--text);
+  }
+
+  .spread-table tr:last-child td { border-bottom: none; }
+  .spread-table tr:hover td { background: var(--surface2); }
+
+  .spread-bps {
+    font-weight: 700;
+  }
+
+  .spread-bps.high { color: var(--accent); }
+  .spread-bps.mid { color: var(--accent4); }
+  .spread-bps.low { color: var(--muted); }
+
+  /* ── Loading skeleton ── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+    height: 12px;
+    margin: 4px 0;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* ── Toast ── */
+  .toast-wrap {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    animation: slide-in 0.3s ease;
+    max-width: 320px;
+  }
+
+  .toast.error { border-left-color: var(--accent2); }
+
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ── Fear Greed gauge ── */
+  .fg-gauge {
+    padding: 20px;
+    text-align: center;
+  }
+
+  .fg-value {
+    font-family: var(--mono);
+    font-size: 64px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .fg-label {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+  }
+
+  .fg-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(90deg,
+      #ff3d6b 0%, #ff8c00 25%, #ffb800 50%, #7ac943 75%, #00ff88 100%);
+    position: relative;
+    margin: 0 20px;
+  }
+
+  .fg-needle {
+    position: absolute;
+    top: -4px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+    transform: translateX(-50%);
+    transition: left 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 0 8px rgba(255,255,255,0.4);
+  }
+
+  /* ── Refresh indicator ── */
+  .refresh-info {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .spin {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* ── Section label ── */
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 12px;
+    margin-top: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Setup screen ── */
+  .setup-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 60px);
+    padding: 48px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+
+  .setup-logo {
+    width: 64px;
+    height: 64px;
+    background: var(--accent);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    margin: 0 auto 24px;
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .setup-title {
+    font-size: 40px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    margin-bottom: 8px;
+  }
+
+  .setup-title span { color: var(--accent); }
+
+  .setup-sub {
+    color: var(--muted);
+    font-size: 15px;
+    margin-bottom: 40px;
+    max-width: 480px;
+    line-height: 1.6;
+  }
+
+  .setup-form {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 40px;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .setup-form label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    text-align: left;
+  }
+
+  .setup-form .api-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .setup-form .btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  .setup-hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 16px;
+    line-height: 1.8;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 1200px) {
+    .stats-row { grid-template-columns: repeat(3, 1fr); }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    main { padding: 16px; }
+    header { padding: 0 16px; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .api-input { width: 200px; }
+    .setup-title { font-size: 28px; }
+    .setup-form { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark"></div>
+    Quant<span>Edge</span>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot" id="liveIndicator"></div>
+      <span id="liveText">Connecting...</span>
+    </div>
+    <div class="api-input-wrap">
+      <input class="api-input" id="apiUrlInput" placeholder="https://your-service.railway.app" />
+      <button class="btn" onclick="connectApi()">Connect</button>
+    </div>
+    <div class="refresh-info" id="refreshInfo">
+      <span id="refreshIcon">◌</span>
+      <span id="lastUpdated">—</span>
+    </div>
+  </div>
+</header>
+
+<!-- Setup screen shown when no API configured -->
+<div id="setupScreen" class="setup-screen">
+  <div class="setup-logo"></div>
+  <h1 class="setup-title">Quant<span>Edge</span></h1>
+  <p class="setup-sub">Real-time crypto trading intelligence dashboard. Connect your Railway API to start monitoring signals.</p>
+  <div class="setup-form">
+    <label>Service 1 API URL</label>
+    <input class="api-input" id="setupUrlInput" placeholder="https://your-service-1.railway.app" />
+    <button class="btn" onclick="connectFromSetup()">Connect Dashboard</button>
+    <p class="setup-hint">
+      Find your URL in Railway → Service 1 → Settings → Domains<br>
+      The dashboard polls /signals/all, /health, and /scanner/arbitrage/live
+    </p>
+  </div>
+</div>
+
+<!-- Main dashboard (hidden until connected) -->
+<main id="mainDash" style="display:none">
+
+  <!-- Stats row -->
+  <div class="stats-row">
+    <div class="stat-card arb">
+      <div class="stat-label">Arbitrage</div>
+      <div class="stat-value" id="statArb">—</div>
+      <div class="stat-sub" id="statArbSub">signals total</div>
+    </div>
+    <div class="stat-card sentiment">
+      <div class="stat-label">Sentiment</div>
+      <div class="stat-value" id="statSent">—</div>
+      <div class="stat-sub" id="statSentSub">signals total</div>
+    </div>
+    <div class="stat-card whale">
+      <div class="stat-label">Whale</div>
+      <div class="stat-value" id="statWhale">—</div>
+      <div class="stat-sub" id="statWhaleSub">signals total</div>
+    </div>
+    <div class="stat-card liquidity">
+      <div class="stat-label">Liquidity</div>
+      <div class="stat-value" id="statLiq">—</div>
+      <div class="stat-sub" id="statLiqSub">signals total</div>
+    </div>
+    <div class="stat-card health">
+      <div class="stat-label">Platform</div>
+      <div class="stat-value" id="statHealth">—</div>
+      <div class="stat-sub" id="statHealthSub">signals buffered</div>
+    </div>
+  </div>
+
+  <!-- Row 1: Arbitrage + Sentiment -->
+  <div class="section-label">Signal Feed</div>
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="panel-dot dot-arb"></div>
+          Arbitrage Signals
+        </div>
+        <span class="panel-count" id="arbCount">—</span>
+      </div>
+      <div class="panel-body" id="arbFeed">
+        <div class="empty-state">
+          <div class="empty-icon">◎</div>
+          Waiting for signals...
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="panel-dot dot-sent"></div>
+          Sentiment Signals
+        </div>
+        <span class="panel-count" id="sentCount">—</span>
+      </div>
+      <div class="panel-body" id="sentFeed">
+        <div class="empty-state">
+          <div class="empty-icon">◎</div>
+          Waiting for signals...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Whale + Liquidity + Fear&Greed -->
+  <div class="section-label">Market Intelligence</div>
+  <div class="grid-3">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="panel-dot dot-whale"></div>
+          Whale Moves
+        </div>
+        <span class="panel-count" id="whaleCount">—</span>
+      </div>
+      <div class="panel-body" id="whaleFeed">
+        <div class="empty-state">
+          <div class="empty-icon">◎</div>
+          Monitoring on-chain...
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <div class="panel-dot dot-liq"></div>
+          Liquidity Walls
+        </div>
+        <span class="panel-count" id="liqCount">—</span>
+      </div>
+      <div class="panel-body" id="liqFeed">
+        <div class="empty-state">
+          <div class="empty-icon">◎</div>
+          Scanning order books...
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Market Mood</div>
+      </div>
+      <div class="fg-gauge">
+        <div class="fg-value" id="fgValue" style="color: var(--accent4)">—</div>
+        <div class="fg-label" id="fgLabel" style="color: var(--muted)">Fear & Greed</div>
+        <div class="fg-bar">
+          <div class="fg-needle" id="fgNeedle" style="left: 50%"></div>
+        </div>
+      </div>
+      <div style="padding: 0 20px 20px">
+        <div class="stat-label" style="margin-bottom: 12px">Live Spreads</div>
+        <div id="spreadMini" style="font-family: var(--mono); font-size: 11px; color: var(--muted)">
+          Loading spreads...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Full live spreads table -->
+  <div class="section-label">Live Arbitrage Scanner</div>
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Cross-Exchange Spreads</div>
+      <span class="panel-count" id="spreadCount">—</span>
+    </div>
+    <div style="overflow-x: auto;">
+      <table class="spread-table">
+        <thead>
+          <tr>
+            <th>Symbol</th>
+            <th>Buy Exchange</th>
+            <th>Sell Exchange</th>
+            <th>Buy Price</th>
+            <th>Sell Price</th>
+            <th>Spread (bps)</th>
+          </tr>
+        </thead>
+        <tbody id="spreadsTableBody">
+          <tr><td colspan="6" style="text-align:center; padding:32px; color: var(--muted); font-family: var(--mono); font-size: 12px;">Loading spreads...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- Toast container -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────────
+  let API_BASE = '';
+  let refreshInterval = null;
+  let isLoading = false;
+  let knownSignalIds = new Set();
+  let fgValue = null;
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  window.addEventListener('load', () => {
+    const saved = localStorage.getItem('qe_api_url');
+    if (saved) {
+      API_BASE = saved;
+      document.getElementById('apiUrlInput').value = saved;
+      document.getElementById('setupUrlInput').value = saved;
+      initDashboard();
+    }
+  });
+
+  function connectApi() {
+    const val = document.getElementById('apiUrlInput').value.trim().replace(/\/$/, '');
+    if (!val) return;
+    API_BASE = val;
+    localStorage.setItem('qe_api_url', val);
+    initDashboard();
+  }
+
+  function connectFromSetup() {
+    const val = document.getElementById('setupUrlInput').value.trim().replace(/\/$/, '');
+    if (!val) return;
+    document.getElementById('apiUrlInput').value = val;
+    connectApi();
+  }
+
+  function initDashboard() {
+    document.getElementById('setupScreen').style.display = 'none';
+    document.getElementById('mainDash').style.display = 'block';
+    fetchAll();
+    if (refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(fetchAll, 8000);
+  }
+
+  // ── Fetch all data ─────────────────────────────────────────────────────────
+  async function fetchAll() {
+    if (isLoading) return;
+    isLoading = true;
+    setRefreshState(true);
+
+    try {
+      const [signals, health, spreads] = await Promise.allSettled([
+        fetchJson('/signals/all?limit=100'),
+        fetchJson('/health'),
+        fetchJson('/scanner/arbitrage/live'),
+      ]);
+
+      if (signals.status === 'fulfilled') renderSignals(signals.value);
+      if (health.status === 'fulfilled') renderHealth(health.value);
+      if (spreads.status === 'fulfilled') renderSpreads(spreads.value);
+
+      setLiveStatus(true);
+      document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    } catch (e) {
+      setLiveStatus(false);
+    } finally {
+      isLoading = false;
+      setRefreshState(false);
+    }
+  }
+
+  async function fetchJson(path) {
+    const r = await fetch(API_BASE + path);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  }
+
+  // ── Render signals ─────────────────────────────────────────────────────────
+  function renderSignals(data) {
+    const all = data.signals || [];
+    const arb   = all.filter(s => s.signal_type === 'arbitrage');
+    const sent  = all.filter(s => s.signal_type === 'sentiment');
+    const whale = all.filter(s => s.signal_type === 'whale');
+    const liq   = all.filter(s => s.signal_type === 'liquidity');
+
+    document.getElementById('statArb').textContent  = arb.length;
+    document.getElementById('statSent').textContent = sent.length;
+    document.getElementById('statWhale').textContent = whale.length;
+    document.getElementById('statLiq').textContent  = liq.length;
+    document.getElementById('arbCount').textContent  = arb.length + ' signals';
+    document.getElementById('sentCount').textContent = sent.length + ' signals';
+    document.getElementById('whaleCount').textContent = whale.length + ' signals';
+    document.getElementById('liqCount').textContent  = liq.length + ' signals';
+
+    renderFeed('arbFeed',   arb.slice(-20).reverse(),   renderArbitrageRow);
+    renderFeed('sentFeed',  sent.slice(-20).reverse(),  renderSentimentRow);
+    renderFeed('whaleFeed', whale.slice(-15).reverse(), renderWhaleRow);
+    renderFeed('liqFeed',   liq.slice(-15).reverse(),   renderLiquidityRow);
+  }
+
+  function renderFeed(id, items, rowFn) {
+    const el = document.getElementById(id);
+    if (!items.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">◎</div>No signals yet</div>`;
+      return;
+    }
+    el.innerHTML = items.map(s => {
+      const isNew = !knownSignalIds.has(s.id);
+      if (s.id) knownSignalIds.add(s.id);
+      return `<div class="signal-row ${isNew ? 'new' : ''}">${rowFn(s)}</div>`;
+    }).join('');
+  }
+
+  function renderArbitrageRow(s) {
+    const profit = s.net_profit_bps || s.gross_profit_bps || 0;
+    const confPct = Math.round((s.confidence || 0) * 100);
+    return `
+      <div class="sig-top">
+        <span class="sig-pair">${s.symbol || '—'}</span>
+        <span class="sig-profit profit-positive">+${profit.toFixed(1)} bps</span>
+      </div>
+      <div class="sig-mid">
+        <span class="tag tag-exchange">${s.buy_exchange || '?'} → ${s.sell_exchange || '?'}</span>
+        <span class="tag tag-${s.strength?.toLowerCase() || 'weak'}">${s.strength || 'WEAK'}</span>
+      </div>
+      <div class="sig-bottom">
+        <span class="sig-meta">${relTime(s.created_at || s.timestamp)}</span>
+        <div class="conf-bar-wrap">
+          <div class="conf-bar"><div class="conf-fill" style="width:${confPct}%"></div></div>
+          <span class="sig-conf" style="color:var(--accent)">${confPct}%</span>
+        </div>
+      </div>`;
+  }
+
+  function renderSentimentRow(s) {
+    const score = ((s.sentiment_score || 0) * 100).toFixed(0);
+    const dir = s.direction || 'neutral';
+    const confPct = Math.round((s.confidence || 0) * 100);
+    return `
+      <div class="sig-top">
+        <span class="sig-pair">$${s.token || '—'}</span>
+        <span class="sig-profit ${dir === 'bullish' ? 'profit-positive' : dir === 'bearish' ? 'profit-negative' : ''}">${score > 0 ? '+' : ''}${score}</span>
+      </div>
+      <div class="sig-mid">
+        <span class="tag tag-${dir}">${dir.toUpperCase()}</span>
+        <span class="tag tag-${s.strength?.toLowerCase() || 'weak'}">${s.strength || 'WEAK'}</span>
+        <span class="sig-meta">${s.mention_count || 0} mentions</span>
+      </div>
+      <div class="sig-bottom">
+        <span class="sig-meta">${relTime(s.created_at || s.timestamp)}</span>
+        <div class="conf-bar-wrap">
+          <div class="conf-bar"><div class="conf-fill" style="width:${confPct}%; background: var(--accent4)"></div></div>
+          <span class="sig-conf" style="color:var(--accent4)">${confPct}%</span>
+        </div>
+      </div>`;
+  }
+
+  function renderWhaleRow(s) {
+    const usd = formatUSD(s.amount_usd || 0);
+    const dir = s.direction || 'neutral';
+    const moveType = (s.move_type || '').replace(/_/g, ' ');
+    return `
+      <div class="sig-top">
+        <span class="sig-pair">${s.asset || '—'}</span>
+        <span class="sig-profit ${dir === 'bullish' ? 'profit-positive' : dir === 'bearish' ? 'profit-negative' : ''}">${usd}</span>
+      </div>
+      <div class="sig-mid">
+        <span class="tag tag-${dir}">${dir.toUpperCase()}</span>
+        <span class="tag tag-exchange">${moveType.toUpperCase()}</span>
+        ${s.exchange_name ? `<span class="tag tag-strong">${s.exchange_name}</span>` : ''}
+      </div>
+      <div class="sig-bottom">
+        <span class="sig-meta">${s.tx_hash ? s.tx_hash.slice(0,10) + '...' : '—'} · ${s.chain || ''}</span>
+        <span class="sig-meta">${relTime(s.created_at || s.timestamp)}</span>
+      </div>`;
+  }
+
+  function renderLiquidityRow(s) {
+    const wallUSD = formatUSD(s.wall_size_usd || 0);
+    const dir = s.direction || 'neutral';
+    const side = s.wall_side || '';
+    const imb = ((s.imbalance_ratio || 0.5) * 100).toFixed(0);
+    return `
+      <div class="sig-top">
+        <span class="sig-pair">${s.symbol || '—'}</span>
+        <span class="sig-profit ${dir === 'bullish' ? 'profit-positive' : dir === 'bearish' ? 'profit-negative' : ''}">${wallUSD}</span>
+      </div>
+      <div class="sig-mid">
+        <span class="tag tag-${dir}">${dir.toUpperCase()}</span>
+        <span class="tag tag-exchange">${side.toUpperCase()} WALL</span>
+        <span class="tag tag-${s.strength?.toLowerCase() || 'weak'}">${s.strength || ''}</span>
+      </div>
+      <div class="sig-bottom">
+        <span class="sig-meta">${s.exchange || ''} · imbalance ${imb}%</span>
+        <span class="sig-meta">${relTime(s.created_at || s.timestamp)}</span>
+      </div>`;
+  }
+
+  // ── Render health ──────────────────────────────────────────────────────────
+  function renderHealth(h) {
+    document.getElementById('statHealth').textContent = h.status === 'ok' ? '●' : '✕';
+    document.getElementById('statHealthSub').textContent = `${h.signals_buffered || 0} signals · DB ${h.database || '?'}`;
+  }
+
+  // ── Render spreads ─────────────────────────────────────────────────────────
+  function renderSpreads(data) {
+    const spreads = data.spreads || [];
+    document.getElementById('spreadCount').textContent = spreads.length + ' pairs';
+
+    // Mini spread preview in mood panel
+    const mini = spreads.slice(0, 4).map(s =>
+      `<div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span>${s.symbol}</span>
+        <span style="color:${s.gross_spread_bps > 10 ? 'var(--accent)' : s.gross_spread_bps > 5 ? 'var(--accent4)' : 'var(--muted)'}">${s.gross_spread_bps?.toFixed(1)} bps</span>
+      </div>`
+    ).join('');
+    document.getElementById('spreadMini').innerHTML = mini || '<span>No spreads detected</span>';
+
+    // Main table
+    const tbody = document.getElementById('spreadsTableBody');
+    if (!spreads.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted);font-family:var(--mono);font-size:12px">No spreads detected</td></tr>';
+      return;
+    }
+    tbody.innerHTML = spreads.map(s => {
+      const bps = s.gross_spread_bps || 0;
+      const cls = bps > 15 ? 'high' : bps > 7 ? 'mid' : 'low';
+      return `<tr>
+        <td style="font-weight:700">${s.symbol}</td>
+        <td>${s.buy_exchange}</td>
+        <td>${s.sell_exchange}</td>
+        <td>${s.buy_price?.toFixed(2) || '—'}</td>
+        <td>${s.sell_price?.toFixed(2) || '—'}</td>
+        <td><span class="spread-bps ${cls}">${bps.toFixed(2)}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function setLiveStatus(ok) {
+    const dot = document.getElementById('liveIndicator');
+    const txt = document.getElementById('liveText');
+    dot.style.background = ok ? 'var(--accent)' : 'var(--accent2)';
+    txt.textContent = ok ? 'Live' : 'Disconnected';
+    txt.style.color = ok ? 'var(--accent)' : 'var(--accent2)';
+  }
+
+  function setRefreshState(loading) {
+    document.getElementById('refreshIcon').textContent = loading ? '◌' : '✓';
+    document.getElementById('refreshIcon').className = loading ? 'spin' : '';
+  }
+
+  function relTime(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    const diff = (Date.now() - d) / 1000;
+    if (diff < 60) return `${Math.round(diff)}s ago`;
+    if (diff < 3600) return `${Math.round(diff/60)}m ago`;
+    if (diff < 86400) return `${Math.round(diff/3600)}h ago`;
+    return d.toLocaleDateString();
+  }
+
+  function formatUSD(n) {
+    if (n >= 1e9) return '$' + (n/1e9).toFixed(1) + 'B';
+    if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return '$' + (n/1e3).toFixed(0) + 'K';
+    return '$' + n.toFixed(0);
+  }
+
+  function toast(msg, type = 'info') {
+    const wrap = document.getElementById('toastWrap');
+    const el = document.createElement('div');
+    el.className = `toast ${type === 'error' ? 'error' : ''}`;
+    el.textContent = msg;
+    wrap.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  // Enter key on URL inputs
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      if (document.activeElement.id === 'apiUrlInput') connectApi();
+      if (document.activeElement.id === 'setupUrlInput') connectFromSetup();
+    }
+  });
+</script>
+</body>
+</html>

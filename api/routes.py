@@ -37,6 +37,9 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+from fastapi.staticfiles import StaticFiles
+app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="dashboard")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
